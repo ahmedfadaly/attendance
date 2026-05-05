@@ -1,0 +1,122 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "sqlite"
+  url      = env("DATABASE_URL")
+}
+
+model User {
+  id        String   @id @default(cuid())
+  email     String   @unique
+  password  String
+  name      String
+  role      String   @default("worker") // super_admin, manager, worker
+  active    Boolean  @default(true)
+  mustChangePassword Boolean @default(true)
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+}
+
+model Department {
+  id          String   @id @default(cuid())
+  name        String
+  description String?
+  active      Boolean  @default(true)
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+  
+  doctors     Doctor[]
+  scheduleDays ScheduleDay[]
+}
+
+model Doctor {
+  id          String   @id @default(cuid())
+  fullName    String
+  code        String   @unique
+  phone       String?
+  email       String?
+  departmentId String?
+  department   Department? @relation(fields: [departmentId], references: [id])
+  active      Boolean  @default(true)
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+  
+  monthlySchedules MonthlySchedule[]
+}
+
+model MonthlySchedule {
+  id              String   @id @default(cuid())
+  doctorId        String
+  doctor          Doctor   @relation(fields: [doctorId], references: [id])
+  month           String   // YYYY-MM format
+  requiredDays    Int      @default(12)
+  createdAt       DateTime @default(now())
+  updatedAt       DateTime @updatedAt
+  
+  scheduleDays    ScheduleDay[]
+}
+
+model ScheduleDay {
+  id              String   @id @default(cuid())
+  scheduleId      String
+  schedule        MonthlySchedule @relation(fields: [scheduleId], references: [id])
+  doctorId        String
+  date            String   // YYYY-MM-DD format
+  shift           String   @default("morning") // morning, evening
+  departmentId    String?
+  department      Department? @relation(fields: [departmentId], references: [id])
+  status          String   @default("scheduled") // scheduled, changed_from, changed_to, cancelled
+  isCounted       Boolean  @default(true)
+  changeRequestId String?
+  notes           String?
+  createdAt       DateTime @default(now())
+  updatedAt       DateTime @updatedAt
+}
+
+model AttendanceRecord {
+  id              String   @id @default(cuid())
+  doctorId        String
+  doctorName      String
+  departmentId    String?
+  departmentName  String?
+  date            String
+  shift           String   @default("morning")
+  checkInTime     String?
+  checkOutTime    String?
+  status          String   @default("present") // present, absent, outside_schedule, approved_changed_day, incomplete
+  isOfficialAttendance Boolean @default(true)
+  scheduleDayId   String?
+  changeRequestId String?
+  createdBy       String?
+  notes           String?
+  createdAt       DateTime @default(now())
+  updatedAt       DateTime @updatedAt
+}
+
+model ChangeRequest {
+  id              String   @id @default(cuid())
+  doctorId        String
+  doctorName      String
+  departmentId    String?
+  departmentName  String?
+  month           String
+  originalDate    String
+  originalShift   String
+  requestedDate   String
+  requestedShift  String
+  reason          String
+  status          String   @default("pending") // pending, approved, rejected
+  managerNote     String?
+  reviewedBy      String?
+  reviewedAt      DateTime?
+  createdAt       DateTime @default(now())
+  updatedAt       DateTime @updatedAt
+}
+
+model Setting {
+  id    String @id @default(cuid())
+  key   String @unique
+  value String
+}
